@@ -7,6 +7,6 @@
 #include <sstream>
 #include <unistd.h>
 
-#define MAX_CMD_BUFFER 255
+#define MAX_CMD_BUFFER 1024
 
 #endif
