@@ -3,9 +3,12 @@
  * StudentID:
  */
 
- #include "stdio.h"
+ #include "common.hpp"
+ #include "parser.hpp"
+ #include "executor.hpp"
+ #include "history.hpp"
+ #include "jobs.hpp"
 
- #define MAX_CMD_BUFFER 255
  
  
  int main() {

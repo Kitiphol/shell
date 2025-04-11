@@ -4,7 +4,7 @@ BINARY=icsh
 
 all: icsh
 
-icsh: src/icsh.c++
+icsh: src/icsh.cpp
 	$(CC) -o $(BINARY) $(CFLAGS) $<
 
 .PHONY: clean
