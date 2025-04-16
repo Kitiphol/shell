@@ -84,7 +84,7 @@
         }
 
         // For any other command, assume it is an external command.
-        int status = execute_external(tokens);
+        int status = executeExternalCommand(tokens);
 
 
 

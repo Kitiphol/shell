@@ -5,6 +5,6 @@
 #include <vector>
 #include <string>
 
-int execute_external(const std::vector<std::string> &tokens);
+int executeExternalCommand(const std::vector<std::string> &tokens);
 
 #endif
