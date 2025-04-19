@@ -8,15 +8,22 @@
  #include "executor.hpp"
  #include "history.hpp"
  #include "jobs.hpp"
-
  #include <fstream>
- 
+ #include <signal.h>
+ #include <sys/types.h>
+ #include <unistd.h>
+ #include "signals.hpp"
+
  
  int main(int argc, char* argv[]) {
      std::string input;
      std::istream *input_stream = &std::cin;
      std::ifstream file;
      History history;
+
+
+     setupSigintHandler();
+     setupSigtstpHandler();
 
      if (argc > 1) {
         file.open(argv[1]);
@@ -61,6 +68,8 @@
             for (size_t i = 1; i < tokens.size(); ++i) {
                 if (tokens[i] == "$$") {
                     std::cout << getpid() << " ";
+                } else if (tokens[i] == "$?") {
+                    std::cout << lastExitStatus << " ";
                 } else {
                     std::cout << tokens[i] << " ";
                 }

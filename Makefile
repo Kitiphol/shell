@@ -59,7 +59,12 @@ CXXFLAGS = -Wall -g -std=c++17
 BINARY = icsh
 SRCDIR = src
 
-SOURCES = $(SRCDIR)/icsh.cpp $(SRCDIR)/parser.cpp $(SRCDIR)/executor.cpp $(SRCDIR)/history.cpp
+SOURCES = $(SRCDIR)/icsh.cpp \
+          $(SRCDIR)/parser.cpp \
+          $(SRCDIR)/executor.cpp \
+          $(SRCDIR)/history.cpp \
+          $(SRCDIR)/signals.cpp
+
 OBJECTS = $(SOURCES:.cpp=.o)
 
 all: $(BINARY)
@@ -72,4 +77,5 @@ $(SRCDIR)/%.o: $(SRCDIR)/%.cpp
 
 clean:
 	rm -f $(SRCDIR)/*.o $(BINARY)
+
 

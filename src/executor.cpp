@@ -1,4 +1,5 @@
 #include "executor.hpp"
+#include "signals.hpp"
 #include <unistd.h>
 #include <sys/wait.h>
 #include <iostream>
@@ -80,9 +81,23 @@ int executeExternalCommand(const std::vector<std::string> &tokens) {
             exit(1); //exit(0) for success, exit(1) for failure
         }
    } else {
-        int status;
+
+        setForegroundPid(pid);
+        int status = 0;
         wait(&status);
-        return status;
+
+        setForegroundPid(-1);
+
+        if (WIFEXITED(status)) {
+            setLastExitStatus(WEXITSTATUS(status)); 
+        } else if (WIFSIGNALED(status)) {
+            setLastExitStatus(128 + WTERMSIG(status));
+        }  else {
+            setLastExitStatus(1);  
+        }
+        
+        
+        return lastExitStatus;
    }
 
    return 0;
