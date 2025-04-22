@@ -6,12 +6,14 @@
 
 pid_t foreground_pid = -1;
 int lastExitStatus = 0;
+bool isSignal = false;
 
 void handleSigint(int sig, siginfo_t *info, void *context) {
     if (foreground_pid > 0) {
         kill(foreground_pid, SIGINT);
     } else {
-        std::cout << "No foreground process running." << std::endl;
+        isSignal = true;
+        std::cout << "No foreground process running. Can't Use Ctrl + C" << std::endl;
     }
 }
 
@@ -29,7 +31,8 @@ void handleSigtstp(int sig, siginfo_t *info, void *context) {
     if (foreground_pid > 0) {
         kill(foreground_pid, SIGTSTP);
     } else {
-        std::cout << "No foreground process running." << std::endl;
+        isSignal = true;
+        std::cout << "No foreground process running.Can't Use Ctrl + Z" << std::endl;
     }
 }
 

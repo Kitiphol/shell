@@ -1,5 +1,6 @@
 #include "parser.hpp"
 #include <sstream>
+#include <iostream>
 
 std::vector<std::string> parse_input(const std::string &input) {
     std::vector<std::string> tokens;
@@ -8,6 +9,7 @@ std::vector<std::string> parse_input(const std::string &input) {
     
     while (iss >> token) {
         tokens.push_back(token);
+        std::cout << token << std::endl;
     }
 
     return tokens;

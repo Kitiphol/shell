@@ -6,6 +6,7 @@
 
 extern pid_t foreground_pid;
 extern int lastExitStatus;
+extern bool isSignal;
 
 void handleSigint(int sig, siginfo_t *info, void *context);
 

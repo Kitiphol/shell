@@ -7,6 +7,7 @@
 #include <string>
 #include <fcntl.h>
 
+
 int executeExternalCommand(const std::vector<std::string> &tokens) {
 
     if(tokens.empty()) {
@@ -63,6 +64,7 @@ int executeExternalCommand(const std::vector<std::string> &tokens) {
         std::cerr << "Fork failed." << std::endl;
         return -1;
    } else if (pid == 0) {
+
 
         if (in != -1) {
             dup2(in, 0);

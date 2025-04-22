@@ -15,15 +15,13 @@
  #include "signals.hpp"
 
  
+
  int main(int argc, char* argv[]) {
      std::string input;
      std::istream *input_stream = &std::cin;
      std::ifstream file;
      History history;
 
-
-     setupSigintHandler();
-     setupSigtstpHandler();
 
      if (argc > 1) {
         file.open(argv[1]);
@@ -34,70 +32,89 @@
         input_stream = &file;
     }
 
-    while(true) {
+    try {
+        while(true) {
 
-        if (input_stream == &std::cin) {
-            std::cout << "icsh $ ";
-        }
-
-        if (!std::getline(*input_stream, input)) {
-            break; 
-        }
-
-        if (input.empty()) {
-            continue;
-        }
-
-        if (input == "!!") {
-            std::string last = history.getLastCommand();
-            if (last.empty())
-                continue;
-            std::cout << last << std::endl;
-            input = last;
-        }
-
-        history.add(input);
-
-        auto tokens = parse_input(input);
-        if (tokens.empty()) {
-            continue;
-        }
-
-        if (tokens[0] == "echo") {
-
-            for (size_t i = 1; i < tokens.size(); ++i) {
-                if (tokens[i] == "$$") {
-                    std::cout << getpid() << " ";
-                } else if (tokens[i] == "$?") {
-                    std::cout << lastExitStatus << " ";
-                } else {
-                    std::cout << tokens[i] << " ";
-                }
+            setupSigintHandler();
+            setupSigtstpHandler();
+    
+            if (input_stream == &std::cin) {
+                std::cout << "icsh $ ";
             }
-            std::cout << std::endl;
-            continue;
+    
+            if (!std::getline(*input_stream, input)) {
+                if (!isSignal) {
+                    break; 
+                } else {
+                    std::cin.clear();
+                }
+                
+            }
+    
+            if (input.empty()) {
+                continue;
+            }
+    
+            if (input == "!!") {
+                std::string last = history.getLastCommand();
+                if (last.empty())
+                    continue;
+                std::cout << last << std::endl;
+                input = last;
+            }
+    
+            history.add(input);
+    
+            auto tokens = parse_input(input);
+            if (tokens.empty()) {
+                std::cout << "empty tokens" << std::endl;
+                continue;
+            }
+    
+            if (tokens[0] == "echo") {
+    
+                for (size_t i = 1; i < tokens.size(); ++i) {
+                    if (tokens[i] == "$$") {
+                        std::cout << getpid() << " ";
+                    } else if (tokens[i] == "$?") {
+                        std::cout << lastExitStatus << " ";
+                    } else {
+                        std::cout << tokens[i] << " ";
+                    }
+                }
+                std::cout << std::endl;
+                continue;
+                
+            }
+    
+            if (tokens[0] == "exit") {
+                int exit_code = 0;
+                if (tokens.size() > 1) {
+                    try {
+                        exit_code = std::stoi(tokens[1]) & 0xFF; // truncate to 8 bits
+                    } catch (...) {
+                        exit_code = 0;
+                    }
+                    exit_code = 0;
+                }
+                std::cout << "bye" << std::endl;
+                return exit_code;
+            }
+    
+            // For any other command, assume it is an external command.
+            int status = executeExternalCommand(tokens);
+    
+            isSignal = false;
             
         }
 
-        if (tokens[0] == "exit") {
-            int exit_code = 0;
-            if (tokens.size() > 1) {
-                try {
-                    exit_code = std::stoi(tokens[1]) & 0xFF; // truncate to 8 bits
-                } catch (...) {
-                    exit_code = 0;
-                }
-            }
-            std::cout << "bye" << std::endl;
-            return exit_code;
-        }
+        std::cout << "There is no error :)" << std::endl;
 
-        // For any other command, assume it is an external command.
-        int status = executeExternalCommand(tokens);
-
-
-
+    } catch (...){
+        std::cout << "There is an unexpected error" << std::endl;
     }
-    return 0;
+    
+    std::cout << "Hello World" << std::endl;
+    return 100;
 
  }
