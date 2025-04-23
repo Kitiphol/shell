@@ -60,6 +60,7 @@
                 if (last.empty())
                     continue;
                 std::cout << last << std::endl;
+                setLastExitStatus(0);
                 input = last;
             }
     
@@ -82,6 +83,7 @@
                         std::cout << tokens[i] << " ";
                     }
                 }
+                setLastExitStatus(0);
                 std::cout << std::endl;
                 continue;
                 

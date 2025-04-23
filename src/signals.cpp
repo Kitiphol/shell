@@ -5,7 +5,7 @@
 
 
 pid_t foreground_pid = -1;
-int lastExitStatus = 0;
+int lastExitStatus = 700;
 bool isSignal = false;
 
 void handleSigint(int sig, siginfo_t *info, void *context) {

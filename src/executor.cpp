@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <fcntl.h>
+#include <errno.h>
 
 
 int executeExternalCommand(const std::vector<std::string> &tokens) {
@@ -65,6 +66,7 @@ int executeExternalCommand(const std::vector<std::string> &tokens) {
         return -1;
    } else if (pid == 0) {
 
+        setpgid(0, 0);
 
         if (in != -1) {
             dup2(in, 0);
@@ -75,30 +77,65 @@ int executeExternalCommand(const std::vector<std::string> &tokens) {
             dup2(out, 1);
             close(out);
         }
-
         int val = execvp(args[0], args.data());
         if (val == -1) {
             std::cerr << "Failed to execute command: " 
                     << strerror(errno) << std::endl;
             exit(1); //exit(0) for success, exit(1) for failure
         }
+
    } else {
 
+
+
         setForegroundPid(pid);
+
         int status = 0;
-        wait(&status);
+        int waitres = waitpid(pid, &status, WUNTRACED);
 
-        setForegroundPid(-1);
-
-        if (WIFEXITED(status)) {
-            setLastExitStatus(WEXITSTATUS(status)); 
-        } else if (WIFSIGNALED(status)) {
-            setLastExitStatus(128 + WTERMSIG(status));
-        }  else {
-            setLastExitStatus(1);  
+        if ( waitres == -1 ) {
+            while( (waitres = waitpid(pid, &status, WUNTRACED)) == -1) {
+            
+            }
         }
         
+        // std::cout << "This is the status" << std::endl;
+        // std::cout << status << std::endl;
+
+        std::cout << "waitres: " << waitres << std::endl;
+
+        setForegroundPid(-1);
         
+
+    
+
+        // std::cout << "Start " << std::endl;
+        if (WIFEXITED(status)) {
+            std::cout << "Case A " << std::endl;
+            std::cout << WEXITSTATUS(status) << std::endl;
+            setLastExitStatus(WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+            std::cout << "Case B " << std::endl;
+            // std::cout << WIFSIGNALED(status) << std::endl;
+            int sig = WTERMSIG(status);
+            std::cout << "Signal: " << sig << "(" << strsignal(sig) << ")" << std::endl;
+            if (errno == EINTR) {
+                
+                std::cout << "ah" << std::endl;
+            } 
+            setLastExitStatus(128 + WTERMSIG(status)); 
+        } else if (WIFSTOPPED(status) ){ 
+            std::cout << "Chidl Stopped" << std::endl;
+            std::cout << "Signal: " << WSTOPSIG(status) << "(" << strsignal(WSTOPSIG(status)) << ")" << std::endl;
+            setLastExitStatus(128 + WSTOPSIG(status)); 
+        } else {
+            std::cout << "Case C " << std::endl;
+            setLastExitStatus(1);
+        }
+        
+        // std::cout << " This is the exist status code " << std::endl;
+        // std::cout << lastExitStatus <<std::endl;
+
         return lastExitStatus;
    }
 
