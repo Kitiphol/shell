@@ -2,6 +2,8 @@
 #include <signal.h>
 #include <unistd.h>
 #include <iostream>
+#include "jobs.hpp"
+#include "executor.hpp"
 
 
 pid_t foreground_pid = -1;
@@ -10,7 +12,16 @@ bool isSignal = false;
 
 void handleSigint(int sig, siginfo_t *info, void *context) {
     if (foreground_pid > 0) {
+        // Job* j = globalJobs.getJobByPid(foreground_pid);
+        // if (! j->backgroundRunning) {
+        //     kill(foreground_pid, SIGINT);
+        //     std::cout << "SIGINT has been sent " << std::endl;
+        //     globalJobs.updateJobStatus(-foreground_pid, "Terminated");
+        // }
         kill(foreground_pid, SIGINT);
+            std::cout << "SIGINT has been sent " << std::endl;
+            globalJobs.updateJobStatus(-foreground_pid, "Terminated");
+        
     } else {
         isSignal = true;
         std::cout << "No foreground process running. Can't Use Ctrl + C" << std::endl;
@@ -29,7 +40,16 @@ void setupSigintHandler() {
 
 void handleSigtstp(int sig, siginfo_t *info, void *context) {
     if (foreground_pid > 0) {
+        // Job* j = globalJobs.getJobByPid(foreground_pid);
+        // if (! j->backgroundRunning) {
+        //     kill(foreground_pid, SIGTSTP);
+        //     std::cout << "SIGTSTP has been sent " << std::endl;
+        //     globalJobs.updateJobStatus(foreground_pid, "Stopped");
+        // }
         kill(foreground_pid, SIGTSTP);
+            std::cout << "SIGTSTP has been sent " << std::endl;
+            globalJobs.updateJobStatus(foreground_pid, "Stopped");
+        
     } else {
         isSignal = true;
         std::cout << "No foreground process running.Can't Use Ctrl + Z" << std::endl;
@@ -51,4 +71,92 @@ void setForegroundPid(int pid) {
 
 void setLastExitStatus(int status) {
     lastExitStatus = status;
+}
+
+// void handleSigChld(int sigchld) {
+
+//     pid_t pid = getpid();
+//     int status;
+ 
+//     while( (pid = waitpid(-1, &status,  WNOHANG | WUNTRACED | WCONTINUED)) > 0) {
+//         if (WIFEXITED(status) || WIFSIGNALED(status)) {
+//             globalJobs.updateJobStatus(pid, "Done");
+//         } else if (WIFSTOPPED(status)) {
+//             globalJobs.updateJobStatus(pid, "Stopped");
+//             setLastExitStatus(1);
+//         } else if (WIFCONTINUED(status)) {
+//             globalJobs.updateJobStatus(pid, "Running");
+//             setLastExitStatus(1);
+//         }
+        
+//     }
+    
+//     // if(globalJobs.isThereRunning()) {
+//     //     pid_t pid = getpid();
+//     //     int status;
+ 
+//     //     while( (pid = waitpid(-1, &status,  WNOHANG | WUNTRACED | WCONTINUED)) > 0) {
+//     //         if (WIFEXITED(status) || WIFSIGNALED(status)) {
+//     //             globalJobs.updateJobStatus(pid, "Done");
+//     //         } else if (WIFSTOPPED(status)) {
+//     //             globalJobs.updateJobStatus(pid, "Stopped");
+//     //             setLastExitStatus(1);
+//     //         } else if (WIFCONTINUED(status)) {
+//     //             globalJobs.updateJobStatus(pid, "Running");
+//     //             setLastExitStatus(1);
+//     //         }
+        
+//     //     }
+
+//     // }
+
+//     // pid_t pid = -1;
+//     // int status;
+ 
+//     // while( (pid = waitpid(-1, &status, WNOHANG)) > 0) {
+//     //     globalJobs.updateJobStatus(pid, "Done");
+
+
+        
+//     // }
+
+
+// }
+
+void handleSigChld(int) {
+    int status;
+
+    auto allJobs = globalJobs.getAllJobs(); 
+    for (auto &job : *allJobs) {
+        if (! job.backgroundRunning) {
+            continue;   // skip any job that’s in foreground
+        }
+
+        pid_t r = waitpid(job.pid, &status, WNOHANG);
+        if (r <= 0) {
+            continue;  
+        }
+        if (WIFEXITED(status) || WIFSIGNALED(status)) {
+            globalJobs.updateJobStatus(r, "Done");
+        
+        }
+        else if (WIFSTOPPED(status)) {
+            globalJobs.updateJobStatus(r, "Stopped");
+        }
+        else if (WIFCONTINUED(status)) {
+            globalJobs.updateJobStatus(r, "Running");
+        }
+    }
+}
+
+
+
+
+void setupSigChldHandler() {
+    struct sigaction sa;
+    sa.sa_handler = handleSigChld;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_NOCLDSTOP | SA_RESTART;
+
+    sigaction(SIGCHLD, &sa, nullptr);
 }

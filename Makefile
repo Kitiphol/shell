@@ -63,7 +63,8 @@ SOURCES = $(SRCDIR)/icsh.cpp \
           $(SRCDIR)/parser.cpp \
           $(SRCDIR)/executor.cpp \
           $(SRCDIR)/history.cpp \
-          $(SRCDIR)/signals.cpp
+          $(SRCDIR)/signals.cpp \
+		  $(SRCDIR)/jobs.cpp 
 
 OBJECTS = $(SOURCES:.cpp=.o)
 

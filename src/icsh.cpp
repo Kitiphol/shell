@@ -14,13 +14,16 @@
  #include <unistd.h>
  #include "signals.hpp"
 
- 
+ Jobs globalJobs;
 
  int main(int argc, char* argv[]) {
      std::string input;
      std::istream *input_stream = &std::cin;
      std::ifstream file;
      History history;
+     setIsBuiltIn(false);
+     
+
 
 
      if (argc > 1) {
@@ -32,11 +35,13 @@
         input_stream = &file;
     }
 
+
+    setupSigintHandler();
+    setupSigtstpHandler();
+    setupSigChldHandler();
+
     try {
         while(true) {
-
-            setupSigintHandler();
-            setupSigtstpHandler();
     
             if (input_stream == &std::cin) {
                 std::cout << "icsh $ ";
@@ -102,9 +107,56 @@
                 std::cout << "bye" << std::endl;
                 return exit_code;
             }
+
+            if (tokens[0] == "bg") {
+                if (tokens.size() >= 2 && tokens[1][0] == '%') {
+                  int jobId = std::stoi(tokens[1].substr(1));
+                  if (globalJobs.continueBackground(jobId)) {
+                    std::cout << "bg: called on job ID: " << jobId << std::endl;
+                    setLastExitStatus(0);
+                  } else {
+                    std::cout << "bg: no such job %" << jobId << " or the process already finished"<< std::endl;
+                    setLastExitStatus(1);
+                  }
+                } else {
+                  std::cout << "bg: no such job %" << std::endl;
+                  setLastExitStatus(1);
+                }
+                continue; 
+            }
+
+            if (tokens[0] == "fg") {
+                if (tokens.size() >= 2 && tokens[1][0] == '%') {
+                    int jobId = std::stoi(tokens[1].substr(1));
+                    if (globalJobs.bringToForeground(jobId)) {
+                    //   std::cout << "fg: called on job ID: " << jobId << std::endl;
+                      setLastExitStatus(0);
+                    } else {
+                      std::cout << "fg: no such job %" << jobId << " or the process already finished " << std::endl;
+                      setLastExitStatus(1);
+                    }
+                  } else {
+                    std::cout << "Usage: fg %<jobid>" << std::endl;
+                    setLastExitStatus(1);
+                  }
+                  continue; 
+            }
+
+            
+              
+
+            if(tokens[0] == "jobs") {
+                globalJobs.listJobs();
+            }
     
             // For any other command, assume it is an external command.
-            int status = executeExternalCommand(tokens);
+            
+            int status;
+
+            if( tokens[0] != "bg" && tokens[0] != "fg") {
+                status = executeExternalCommand(tokens);
+            }
+            
     
             isSignal = false;
             

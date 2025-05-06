@@ -3,6 +3,7 @@
 
 #include <csignal>
 #include <unistd.h>
+#include "executor.hpp"
 
 extern pid_t foreground_pid;
 extern int lastExitStatus;
@@ -19,5 +20,11 @@ void setupSigtstpHandler();
 void setForegroundPid(int pid);
 
 void setLastExitStatus(int status);
+
+void handleSigChld(int sigchld);
+
+void setupSigChldHandler();
+
+
 
 #endif

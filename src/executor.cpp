@@ -7,7 +7,19 @@
 #include <string>
 #include <fcntl.h>
 #include <errno.h>
+#include "jobs.hpp"
 
+
+bool backgroundRunning = false;
+bool isBuiltIn = false;
+
+void setBackgroundRunning(bool state) {
+    backgroundRunning = state;
+}
+
+void setIsBuiltIn(bool state) {
+    isBuiltIn = state;
+}
 
 int executeExternalCommand(const std::vector<std::string> &tokens) {
 
@@ -16,9 +28,13 @@ int executeExternalCommand(const std::vector<std::string> &tokens) {
     }
 
 
+
+
     int in = -1;
     int out = -1;
     std::vector<std::string> cleanTokens;
+    backgroundRunning = false;
+    
 
     for (size_t i = 0; i < tokens.size(); ++i) {
         if (tokens[i] == "<") {
@@ -53,8 +69,22 @@ int executeExternalCommand(const std::vector<std::string> &tokens) {
     //exec() functions expect char*, not std::string 
     // --> use .c_str() to convert fron const std::string to const char*
     // --> use const_cast to convert from const char* to char*
-    args.push_back(const_cast<char*>(token.c_str()));
+    if(token == "&") {
+        setBackgroundRunning(true);
+    } else {
+        args.push_back(const_cast<char*>(token.c_str()));
+    }
+   
    }
+
+   Job j;
+   j.command = cleanTokens;
+   j.jobId = nextJobId++;
+   j.backgroundRunning = backgroundRunning;
+   if(j.backgroundRunning) {
+    setForegroundPid(-1);
+   }
+   j.status = "Running";
 
    // exec() functions expects a null pointer at the end of array input
    args.push_back(nullptr);
@@ -67,6 +97,8 @@ int executeExternalCommand(const std::vector<std::string> &tokens) {
    } else if (pid == 0) {
 
         setpgid(0, 0);
+
+        // globalJobs.addJob(j, pid);
 
         if (in != -1) {
             dup2(in, 0);
@@ -82,61 +114,81 @@ int executeExternalCommand(const std::vector<std::string> &tokens) {
             std::cerr << "Failed to execute command: " 
                     << strerror(errno) << std::endl;
             exit(1); //exit(0) for success, exit(1) for failure
+        } else {
+            // globalJobs.addJob(j, pid);
+            // globalJobs.addJob(pid, cleanTokens, backgroundRunning);
         }
 
    } else {
+        // setpgid(pid, pid);
 
-
-
-        setForegroundPid(pid);
-
-        int status = 0;
-        int waitres = waitpid(pid, &status, WUNTRACED);
-
-        if ( waitres == -1 ) {
-            while( (waitres = waitpid(pid, &status, WUNTRACED)) == -1) {
+        if(j.backgroundRunning) { //background
+            setpgid(pid, pid);
+            setForegroundPid(-1);
+            globalJobs.addJob(j, pid);
+            // globalJobs.addJob(pid, cleanTokens, backgroundRunning);
+            std::cout << "[" << globalJobs.getLastJobId() << "] " << pid << std::endl;
             
-            }
-        }
-        
-        // std::cout << "This is the status" << std::endl;
-        // std::cout << status << std::endl;
+            setLastExitStatus(0);
+            return 0;
 
-        std::cout << "waitres: " << waitres << std::endl;
+        } else { //foreground
 
-        setForegroundPid(-1);
-        
+            // setpgid(pid, pid);
+            setForegroundPid(pid);
+            globalJobs.addJob(j, pid);
+            int status = 0;
+            int waitres = waitpid(pid, &status, WUNTRACED);
 
-    
-
-        // std::cout << "Start " << std::endl;
-        if (WIFEXITED(status)) {
-            std::cout << "Case A " << std::endl;
-            std::cout << WEXITSTATUS(status) << std::endl;
-            setLastExitStatus(WEXITSTATUS(status));
-        } else if (WIFSIGNALED(status)) {
-            std::cout << "Case B " << std::endl;
-            // std::cout << WIFSIGNALED(status) << std::endl;
-            int sig = WTERMSIG(status);
-            std::cout << "Signal: " << sig << "(" << strsignal(sig) << ")" << std::endl;
-            if (errno == EINTR) {
+            if ( waitres == -1 ) {
+                while( (waitres = waitpid(pid, &status, WUNTRACED)) == -1) {
                 
-                std::cout << "ah" << std::endl;
-            } 
-            setLastExitStatus(128 + WTERMSIG(status)); 
-        } else if (WIFSTOPPED(status) ){ 
-            std::cout << "Chidl Stopped" << std::endl;
-            std::cout << "Signal: " << WSTOPSIG(status) << "(" << strsignal(WSTOPSIG(status)) << ")" << std::endl;
-            setLastExitStatus(128 + WSTOPSIG(status)); 
-        } else {
-            std::cout << "Case C " << std::endl;
-            setLastExitStatus(1);
+                }
+            }
+            
+            
+            // globalJobs.addJob(pid, cleanTokens, backgroundRunning);
+            globalJobs.updateJobStatus(pid, "Done");
+            // std::cout << "This is the status" << std::endl;
+            // std::cout << status << std::endl;
+
+            std::cout << "waitres: " << waitres << std::endl;
+            
+            
+
+            // std::cout << "Start " << std::endl;
+            if (WIFEXITED(status)) {
+                std::cout << "Case A " << std::endl;
+                std::cout << WEXITSTATUS(status) << std::endl;
+                setLastExitStatus(WEXITSTATUS(status));
+            } else if (WIFSIGNALED(status)) {
+                std::cout << "Case B " << std::endl;
+                // std::cout << WIFSIGNALED(status) << std::endl;
+                int sig = WTERMSIG(status);
+                std::cout << "Signal: " << sig << "(" << strsignal(sig) << ")" << std::endl;
+                if (errno == EINTR) {
+                    
+                    std::cout << "ah" << std::endl;
+                } 
+                setLastExitStatus(128 + WTERMSIG(status)); 
+            } else if (WIFSTOPPED(status) ){ 
+                std::cout << "Process Stopped" << std::endl;
+                globalJobs.updateJobStatus(foreground_pid, "Stopped");
+                std::cout << "Signal: " << WSTOPSIG(status) << "(" << strsignal(WSTOPSIG(status)) << ")" << std::endl;
+                setLastExitStatus(128 + WSTOPSIG(status)); 
+            } else {
+                std::cout << "Case C " << std::endl;
+                setLastExitStatus(1);
+            }
+
+            setForegroundPid(-1);
+            
+            // std::cout << " This is the exist status code " << std::endl;
+            // std::cout << lastExitStatus <<std::endl;
+
+            return lastExitStatus;
         }
         
-        // std::cout << " This is the exist status code " << std::endl;
-        // std::cout << lastExitStatus <<std::endl;
-
-        return lastExitStatus;
    }
 
    return 0;
